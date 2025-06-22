@@ -13,6 +13,11 @@ XBot is a sophisticated Twitter/X bot that automatically generates and posts eng
   - News topic configuration
   - Manual tweet generation and posting
   - Error logging and monitoring
+- **Rate Limiting**: Built-in rate limiting to prevent API quota exhaustion
+- **Persistent Analytics**: Bot statistics persist across restarts
+- **Health Monitoring**: Comprehensive health checks for all services
+- **Docker Support**: Containerized deployment with Docker and Docker Compose
+- **Testing Suite**: Comprehensive test coverage with Jest
 
 ## 🚀 Getting Started
 
@@ -74,6 +79,12 @@ XBot is a sophisticated Twitter/X bot that automatically generates and posts eng
    MAX_TWEETS_PER_DAY=5
    ```
 
+4. Build the project:
+
+   ```bash
+   yarn build
+   ```
+
 ## 🎮 Usage
 
 ### CLI Interface
@@ -105,21 +116,51 @@ When running in automated mode, XBot will:
 3. Post tweets at configured intervals (default: every 4 hours)
 4. Log all activities and maintain analytics
 
-### Customization
+### Docker Deployment
 
-1. **Tweet Generation**:
+1. Build and run with Docker Compose:
 
-   - Edit tweet prompts in `src/bot.ts`
-   - Customize the Mistral-7B parameters for different generation styles
+   ```bash
+   docker-compose up -d
+   ```
 
-2. **News Topics**:
+2. View logs:
 
-   - Change news topics through the CLI
-   - Default: "#news OR #breakingnews"
+   ```bash
+   docker-compose logs -f xbot
+   ```
 
-3. **Posting Schedule**:
-   - Adjust `TWEET_INTERVAL_HOURS` in `.env`
-   - Modify `MAX_TWEETS_PER_DAY` to control posting frequency
+3. Stop the bot:
+
+   ```bash
+   docker-compose down
+   ```
+
+### Development
+
+1. Run in development mode:
+
+   ```bash
+   yarn dev
+   ```
+
+2. Run tests:
+
+   ```bash
+   yarn test
+   ```
+
+3. Lint code:
+
+   ```bash
+   yarn lint
+   ```
+
+4. Format code:
+
+   ```bash
+   yarn format
+   ```
 
 ## 📊 Analytics
 
@@ -130,8 +171,10 @@ XBot tracks various metrics including:
 - API error rates
 - News fetch success rate
 - Last tweet timestamps and content
+- API call statistics
+- Bot uptime and performance
 
-View these metrics through the CLI's analytics interface.
+View these metrics through the CLI's analytics interface or check the `analytics.json` file.
 
 ## 🔍 Logging
 
@@ -149,8 +192,24 @@ XBot includes robust error handling for:
 - Authentication issues
 - Network failures
 - Content generation failures
+- Health monitoring and alerts
 
 Use the CLI's error log viewer to monitor and diagnose issues.
+
+## 🧪 Testing
+
+The project includes comprehensive tests:
+
+```bash
+# Run all tests
+yarn test
+
+# Run tests with coverage
+yarn test --coverage
+
+# Run tests in watch mode
+yarn test --watch
+```
 
 ## 🤝 Contributing
 
