@@ -29,9 +29,11 @@ async function mainMenu() {
           { name: 'Check Bot Health', value: 'health' },
           { name: 'Manage Topics / Users', value: 'sources' },
           { name: 'Verify Twitter Credentials', value: 'verify' },
+          { name: 'Send LIVE Tweet Now', value: 'live' },
           new inquirer.Separator(),
           { name: 'Exit', value: 'exit' },
         ],
+        loop: false,
       },
     ]);
 
@@ -53,6 +55,9 @@ async function mainMenu() {
         break;
       case 'verify':
         await handleVerifyCreds();
+        break;
+      case 'live':
+        await handleLiveTweet();
         break;
       case 'exit':
         console.log(chalk.blue('Exiting...'));
@@ -170,6 +175,7 @@ async function handleSourceManager() {
           new inquirer.Separator(),
           { name: 'Back to Main Menu', value: 'back' },
         ],
+        loop: false,
       },
     ]);
 
@@ -218,8 +224,54 @@ async function handleVerifyCreds() {
       const user = await client.v2.me();
       console.log(chalk.green(`Successfully authenticated as @${user.data.username}`));
     } catch (err: any) {
-      console.log(chalk.red('Authentication failed:'), err?.message || err);
+      const code = err?.code || err?.data?.status;
+      if (code === 429) {
+        const reset = err?.rateLimit?.reset;
+        const resetDate = reset ? new Date(reset * 1000).toLocaleTimeString() : 'later';
+        console.log(chalk.yellow('⚠ Credentials appear valid but you hit the rate limit (429).'));
+        console.log(chalk.yellow(`   Try again after ${resetDate} UTC.`));
+      } else {
+        console.log(chalk.red('Authentication failed:'), err?.message || err);
+      }
     }
+  }
+  await inquirer.prompt({ type: 'input', name: 'continue', message: 'Press Enter to return to the main menu' });
+}
+
+async function handleLiveTweet() {
+  console.clear();
+  console.log(chalk.red.bold('⚠ LIVE TWEET MODE ⚠'));
+  console.log(
+    chalk.yellow(
+      'This will immediately generate a tweet using current settings and post it to Twitter.'
+    )
+  );
+  const confirm1 = await inquirer.prompt({
+    type: 'confirm',
+    name: 'proceed',
+    message: 'Are you absolutely sure you want to continue?',
+    default: false,
+  });
+  if (!confirm1.proceed) return;
+
+  const confirm2 = await inquirer.prompt({
+    type: 'input',
+    name: 'typed',
+    message: 'Type SEND to confirm:',
+  });
+  if (confirm2.typed !== 'SEND') {
+    console.log(chalk.blue('Live tweet cancelled.'));
+    await inquirer.prompt({ type: 'input', name: 'continue', message: 'Press Enter to return to the main menu' });
+    return;
+  }
+
+  try {
+    console.log(chalk.blue('Generating and posting live tweet...'));
+    await generateAndPostTweet(false);
+    analyticsManager.recordApiCall('twitter');
+    console.log(chalk.green('✅ Tweet posted successfully!'));
+  } catch (err) {
+    console.error(chalk.red('❌ Failed to post tweet:'), err);
   }
   await inquirer.prompt({ type: 'input', name: 'continue', message: 'Press Enter to return to the main menu' });
 }

@@ -30,11 +30,12 @@ const modelsToTry = [
 
 // Sample prompts for tweet generation
 const prompts: string[] = [
-  'Write a witty tweet about trending tech news.',
-  'Create a fun fact tweet about AI advancements.',
-  'Generate an engaging tweet about social media marketing.',
-  'Share an interesting insight about digital transformation.',
-  'Write a tweet about the future of technology.',
+  // 'Write a witty tweet about trending tech news.',
+  // 'Create a fun fact tweet about AI advancements.',
+  // 'Generate an engaging tweet about social media marketing.',
+  // 'Share an interesting insight about digital transformation.',
+  // 'Write a tweet about the future of technology.',
+  "Write a tweet (250-280 characters) as Ryo Hazuki, a sardonic, sarcastic Shenmue parody. Rant about easy modern games, praising Shenmue’s grit or a tough game, with chaotic humor and a nod to retro gaming.  be edgy, controversional, overconfident (because youre overcompensating for being dumb, but you dont want the world to know). Make it feel like Ryo’s unfiltered thoughts, not AI polish. rage bait and engagement bait is ok to use."
 ];
 
 const hasTwitterCreds = (): boolean =>
