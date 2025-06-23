@@ -17,6 +17,8 @@ export interface BotAnalytics {
   };
   startTime: Date | null;
   uptime: number; // in seconds
+  successRate: number;
+  lastErrorTimestamp: Date | null;
 }
 
 const ANALYTICS_FILE = path.join(process.cwd(), 'analytics.json');
@@ -63,7 +65,9 @@ class AnalyticsManager {
         huggingFace: 0
       },
       startTime: null,
-      uptime: 0
+      uptime: 0,
+      successRate: 0,
+      lastErrorTimestamp: null,
     };
   }
 
@@ -80,6 +84,12 @@ class AnalyticsManager {
     // Update uptime if bot is running
     if (this.analytics.isBotRunning && this.analytics.startTime) {
       this.analytics.uptime = Math.floor((Date.now() - this.analytics.startTime.getTime()) / 1000);
+    }
+    // Calculate success rate
+    if (this.analytics.totalTweets > 0) {
+      this.analytics.successRate = (this.analytics.successfulTweets / this.analytics.totalTweets) * 100;
+    } else {
+      this.analytics.successRate = 0;
     }
     return { ...this.analytics };
   }
@@ -106,6 +116,7 @@ class AnalyticsManager {
 
   recordError(error: string): void {
     this.analytics.errors.push(`${new Date().toISOString()}: ${error}`);
+    this.analytics.lastErrorTimestamp = new Date();
     
     // Keep only last 100 errors
     if (this.analytics.errors.length > 100) {
@@ -145,7 +156,9 @@ class AnalyticsManager {
         huggingFace: 0
       },
       startTime: null,
-      uptime: 0
+      uptime: 0,
+      successRate: 0,
+      lastErrorTimestamp: null,
     };
     this.saveAnalytics();
   }

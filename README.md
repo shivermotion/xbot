@@ -4,20 +4,17 @@ XBot is a sophisticated Twitter/X bot that automatically generates and posts eng
 
 ## 🌟 Features
 
-- **AI-Powered Tweet Generation**: Uses Mistral-7B LLM through Hugging Face's API to create engaging, contextually relevant tweets
-- **News-Aware Content**: Fetches current news and trending topics from Twitter to provide context for tweet generation
-- **Automated Posting**: Configurable scheduling system for automated tweet posting
-- **Interactive CLI**: Feature-rich command-line interface for bot management
-  - Real-time analytics tracking
-  - Permission verification
-  - News topic configuration
-  - Manual tweet generation and posting
-  - Error logging and monitoring
-- **Rate Limiting**: Built-in rate limiting to prevent API quota exhaustion
-- **Persistent Analytics**: Bot statistics persist across restarts
-- **Health Monitoring**: Comprehensive health checks for all services
-- **Docker Support**: Containerized deployment with Docker and Docker Compose
-- **Testing Suite**: Comprehensive test coverage with Jest
+- **AI-Powered Tweet Generation**: Uses Hugging Face's Inference API with model fallback for robust tweet creation.
+- **Automated Posting**: Uses `node-schedule` for configurable, automated tweet posting.
+- **Interactive CLI**: A powerful, user-friendly command-line interface for managing the bot, including:
+  - Dry-run mode for testing tweet generation safely.
+  - Detailed analytics viewer.
+  - Secure analytics reset with confirmation.
+  - Comprehensive system health check.
+- **Persistent Analytics**: Bot statistics (API calls, success/failure rates, uptime) are saved to `analytics.json` and persist across restarts.
+- **Health Monitoring**: A dedicated health check command to verify the status of Twitter and Hugging Face APIs.
+- **Containerized Deployment**: Comes with a `Dockerfile` and `docker-compose.yml` for easy, consistent deployment.
+- **Pre-configured Tooling**: Includes scripts for linting (`eslint`), formatting (`prettier`), testing (`jest`), and building (`typescript`).
 
 ## 🚀 Getting Started
 
@@ -87,9 +84,56 @@ XBot is a sophisticated Twitter/X bot that automatically generates and posts eng
 
 ## 🎮 Usage
 
-### CLI Interface
+There are two main ways to interact with XBot: running it directly for development or deploying it in Docker for production.
 
-Start the CLI interface:
+### Running the Bot (Development)
+
+To start the bot's automated scheduler directly on your machine for development or testing, use:
+
+```bash
+yarn dev
+```
+
+The bot will start, and you will see logs in your terminal. Press `Ctrl+C` to stop it gracefully.
+
+### Running the Bot (Production)
+
+For production, you should first build the optimized JavaScript code:
+
+```bash
+yarn build
+```
+
+Then, start the bot using:
+
+```bash
+yarn start
+```
+
+This method is more efficient and is what should be used on a server.
+
+### Deploying with Docker (Recommended for Production)
+
+For a true 24/7 "always-on" setup, deploying with Docker is the best approach.
+
+1.  **Build and run the container in the background:**
+    ```bash
+    docker-compose up -d
+    ```
+2.  **View the bot's live logs:**
+    ```bash
+    docker-compose logs -f xbot
+    ```
+3.  **Stop the bot:**
+    ```bash
+    docker-compose down
+    ```
+
+### Using the Management CLI
+
+The CLI is a powerful tool for managing your bot and performing one-off tasks. The bot **does not** need to be running to use most CLI features.
+
+**Start the CLI:**
 
 ```bash
 yarn cli
@@ -97,70 +141,14 @@ yarn cli
 
 The CLI provides the following options:
 
-1. Start Bot (automated mode)
-2. Generate & Post Test Tweet
-3. View Analytics
-4. Test News API
-5. View Recent Tweets
-6. View Error Log
-7. Change News Topic
-8. Check Twitter Permissions
-9. Exit
-
-### Automated Mode
-
-When running in automated mode, XBot will:
-
-1. Fetch recent news from Twitter based on configured topics
-2. Generate contextually relevant tweets using Mistral-7B
-3. Post tweets at configured intervals (default: every 4 hours)
-4. Log all activities and maintain analytics
-
-### Docker Deployment
-
-1. Build and run with Docker Compose:
-
-   ```bash
-   docker-compose up -d
-   ```
-
-2. View logs:
-
-   ```bash
-   docker-compose logs -f xbot
-   ```
-
-3. Stop the bot:
-
-   ```bash
-   docker-compose down
-   ```
-
-### Development
-
-1. Run in development mode:
-
-   ```bash
-   yarn dev
-   ```
-
-2. Run tests:
-
-   ```bash
-   yarn test
-   ```
-
-3. Lint code:
-
-   ```bash
-   yarn lint
-   ```
-
-4. Format code:
-
-   ```bash
-   yarn format
-   ```
+1.  Generate & Post Test Tweet
+2.  View Analytics
+3.  Test News API
+4.  View Recent Tweets
+5.  View Error Log
+6.  Change News Topic
+7.  Check Twitter Permissions
+8.  Exit
 
 ## 📊 Analytics
 
@@ -228,3 +216,10 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [Twitter API Documentation](https://developer.twitter.com/en/docs)
 - [Hugging Face API Documentation](https://huggingface.co/docs/api-inference/index)
 - [Mistral-7B Model Information](https://huggingface.co/mistralai/Mistral-7B-v0.1)
+
+## 🔧 Core Technologies
+
+- **Node.js & TypeScript**: For a robust and scalable application.
+- **Hugging Face**: For cutting-edge AI-powered tweet generation.
+- **Twitter API v2**: For interacting with the Twitter platform.
+- **Docker**: For containerization and easy deployment.

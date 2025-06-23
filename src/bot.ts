@@ -1,9 +1,11 @@
-import { TwitterApi, TweetV2, Tweetv2SearchResult, UserV2 } from 'twitter-api-v2';
+import { TwitterApi } from 'twitter-api-v2';
 import { HfInference } from '@huggingface/inference';
 import * as schedule from 'node-schedule';
-import axios from 'axios';
 import * as dotenv from 'dotenv';
 import { logger } from './utils/logger';
+import { analyticsManager } from './utils/analytics';
+import chalk from 'chalk';
+import { sourceManager } from './utils/sources';
 
 // Load environment variables
 dotenv.config();
@@ -17,6 +19,14 @@ const client = new TwitterApi({
 });
 
 // Initialize Mistral LLM
+const hf = new HfInference(process.env.HUGGINGFACE_TOKEN);
+
+// List of models to try in order of preference.
+const modelsToTry = [
+  'meta-llama/Llama-3.1-8B-Instruct',
+  'mistralai/Mistral-7B-Instruct-v0.3',
+  'Qwen/Qwen2-7B-Instruct',
+];
 
 // Sample prompts for tweet generation
 const prompts: string[] = [
@@ -27,85 +37,23 @@ const prompts: string[] = [
   'Write a tweet about the future of technology.',
 ];
 
-// News topic configuration
-export let currentNewsTopic = '#news OR #breakingnews';
+const hasTwitterCreds = (): boolean =>
+  !!(
+    process.env.TWITTER_API_KEY &&
+    process.env.TWITTER_API_SECRET &&
+    process.env.TWITTER_ACCESS_TOKEN &&
+    process.env.TWITTER_ACCESS_TOKEN_SECRET
+  );
 
-export function setNewsTopic(topic: string): void {
-  currentNewsTopic = topic;
-  logger.info(`News topic updated to: ${topic}`);
-}
-
-// Function to fetch news headlines
-async function fetchNews(): Promise<string[]> {
-  try {
-    // Search for recent news tweets from verified accounts
-    const tweets = await client.v2.search(currentNewsTopic, {
-      'tweet.fields': ['created_at', 'public_metrics'],
-      'user.fields': ['verified'],
-      max_results: 10,
-      'expansions': ['author_id'],
-    });
-
-    // Convert the response to an array of tweets
-    const tweetsArray = Array.isArray(tweets.data) ? tweets.data : [];
-    
-    if (tweetsArray.length === 0) {
-      console.log('No news tweets found');
-      return [];
-    }
-
-    // Filter for verified accounts and get the most recent tweets
-    const newsTweets = tweetsArray
-      .filter((tweet: TweetV2) => {
-        const author = tweets.includes?.users?.find((user: UserV2) => user.id === tweet.author_id);
-        return author?.verified;
-      })
-      .map((tweet: TweetV2) => tweet.text);
-
-    console.log(`Successfully fetched ${newsTweets.length} news tweets`);
-    return newsTweets;
-  } catch (error: any) {
-    // Enhanced error logging
-    if (error.data) {
-      // Twitter API error response
-      console.error('Twitter API Error:', {
-        status: error.data.status,
-        error: error.data.error,
-        details: error.data.detail,
-        title: error.data.title,
-        type: error.data.type
-      });
-    } else if (error.errors) {
-      // Alternative Twitter error format
-      console.error('Twitter API Errors:', error.errors);
-    } else if (error.message) {
-      console.error('Error Details:', error.message);
-    }
-
-    // Check if credentials are present
-    const credentials = {
-      hasApiKey: !!process.env.TWITTER_API_KEY,
-      hasApiSecret: !!process.env.TWITTER_API_SECRET,
-      hasAccessToken: !!process.env.TWITTER_ACCESS_TOKEN,
-      hasAccessSecret: !!process.env.TWITTER_ACCESS_TOKEN_SECRET
-    };
-    console.error('Credentials Status:', credentials);
-
-    return [];
+async function generateTweet(
+  prompt: string,
+  dryRun = false
+): Promise<string> {
+  if (dryRun) {
+    logger.info('--- Performing a dry run for tweet generation ---');
+    return `This is a sample dry-run tweet about a trending topic. No API was called. #dryrun`;
   }
-}
 
-// Replace pipeline usage in generateTweet with HfInference
-const hf = new HfInference(process.env.HUGGINGFACE_TOKEN);
-
-// List of models to try in order of preference.
-const modelsToTry = [
-  'meta-llama/Llama-3.1-8B-Instruct',
-  'mistralai/Mistral-7B-Instruct-v0.3',
-  'Qwen/Qwen2-7B-Instruct',
-];
-
-export async function generateTweet(prompt: string): Promise<string> {
   for (const modelName of modelsToTry) {
     try {
       logger.info(`Attempting to generate tweet with model: ${modelName}`);
@@ -118,7 +66,9 @@ export async function generateTweet(prompt: string): Promise<string> {
       const generated = response.choices[0].message.content;
 
       if (!generated || !generated.trim()) {
-        logger.warn(`Model ${modelName} returned an empty response. Trying next model...`);
+        logger.warn(
+          `Model ${modelName} returned an empty response. Trying next model...`
+        );
         continue;
       }
 
@@ -136,7 +86,10 @@ export async function generateTweet(prompt: string): Promise<string> {
         );
         continue;
       } else {
-        logger.error(`A critical error occurred with model ${modelName}:`, error);
+        logger.error(
+          `A critical error occurred with model ${modelName}:`,
+          error
+        );
         throw new Error('Tweet generation failed due to a critical API error.');
       }
     }
@@ -145,6 +98,80 @@ export async function generateTweet(prompt: string): Promise<string> {
   // This part is reached only if all models in the list have failed.
   logger.error('All fallback models failed. Could not generate a tweet.');
   throw new Error('Tweet generation failed.');
+}
+
+async function generateAndPostTweet(dryRun = false): Promise<void> {
+  try {
+    if (!dryRun) {
+      logger.info('Verifying Twitter API permissions...');
+      await verifyTwitterPermissions();
+    }
+
+    // Select a random prompt
+    const prompt = prompts[Math.floor(Math.random() * prompts.length)];
+
+    // Build final prompt with source (topics/users) if configured
+    let finalPrompt = prompt;
+    const sourceCfg = sourceManager.getConfig();
+    let contextInfo: string | undefined;
+    if (sourceCfg.mode === 'static') {
+      const randomSource = sourceManager.getRandomSource();
+      contextInfo = randomSource;
+      if (randomSource) {
+        finalPrompt = `${prompt} Context: ${randomSource}`;
+      }
+    } else {
+      let dyn: string | undefined;
+      if (hasTwitterCreds()) {
+        dyn = await sourceManager.getDynamicSource();
+      } else {
+        logger.warn('Dynamic lookup skipped – missing Twitter credentials');
+      }
+      contextInfo = dyn;
+      if (dyn) {
+        finalPrompt = `${prompt} Context: ${dyn}`;
+      }
+    }
+
+    logger.info(
+      `🛈 Mode: ${sourceCfg.mode}$${contextInfo ? `, Context: ${contextInfo}` : ', Context: none'}`
+    );
+
+    // If this is a dry run, show exactly what prompt would be sent to the LLM
+    if (dryRun) {
+      logger.info(`🛈 Prompt to LLM: ${finalPrompt}`);
+    }
+
+    // Generate the tweet content (HF skipped in dryRun)
+    const tweet = await generateTweet(finalPrompt, dryRun);
+
+    if (dryRun) {
+      logger.info('--- DRY RUN MODE ---');
+      logger.info('Tweet that would have been posted:');
+      // Use console.log for clean output without logger formatting
+      console.log(chalk.greenBright.bold(`\n${tweet}\n`));
+      logger.info('--- No tweet was sent. ---');
+      return; // Stop execution here for a dry run
+    }
+
+    await client.v2.tweet(tweet);
+    logger.info(`Posted tweet: ${tweet}`);
+    // Analytics for live tweets will be handled by the CLI that calls this.
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message.includes('Write permission')) {
+        logger.error('Permission Error:', error.message);
+        logger.error(
+          'Please update your app permissions in the Twitter Developer Portal and regenerate your tokens.'
+        );
+      } else {
+        logger.error('Error in generateAndPostTweet:', error);
+      }
+    } else {
+      logger.error('Unknown error in generateAndPostTweet:', error);
+    }
+    throw error;
+  }
 }
 
 // A new, simpler function to verify permissions.
@@ -169,49 +196,12 @@ async function verifyTwitterPermissions(): Promise<void> {
   }
 }
 
-// Modify the generateAndPostTweet function to include permission check
-async function generateAndPostTweet(): Promise<void> {
-  try {
-    // First verify permissions
-    logger.info('Verifying Twitter API permissions...');
-    await verifyTwitterPermissions();
-    
-    const prompt = prompts[Math.floor(Math.random() * prompts.length)];
-    let finalPrompt = prompt;
-    
-    try {
-      const news = await fetchNews();
-      if (news.length > 0) {
-        finalPrompt = `${prompt} Context: ${news[Math.floor(Math.random() * news.length)]}`;
-      }
-    } catch (error) {
-      logger.error('Error fetching news, continuing without news context:', error);
-    }
-
-    const tweet = await generateTweet(finalPrompt);
-    await client.v2.tweet(tweet);
-    logger.info(`Posted tweet: ${tweet}`);
-  } catch (error) {
-    if (error instanceof Error) {
-      if (error.message.includes('Write permission')) {
-        logger.error('Permission Error:', error.message);
-        logger.error('Please update your app permissions in the Twitter Developer Portal and regenerate your tokens.');
-      } else {
-        logger.error('Error in generateAndPostTweet:', error);
-      }
-    } else {
-      logger.error('Unknown error in generateAndPostTweet:', error);
-    }
-    throw error;
-  }
-}
-
 // Schedule tweets
 function scheduleTweets(): void {
   const intervalHours = parseInt(process.env.TWEET_INTERVAL_HOURS || '4');
   const scheduleRule = `0 */${intervalHours} * * *`;
-  
-  schedule.scheduleJob(scheduleRule, generateAndPostTweet);
+
+  schedule.scheduleJob(scheduleRule, () => generateAndPostTweet(false));
   logger.info(`Scheduled tweets every ${intervalHours} hours`);
 }
 
@@ -219,17 +209,28 @@ function scheduleTweets(): void {
 async function startBot(): Promise<void> {
   try {
     logger.info('Starting Twitter bot...');
+    analyticsManager.setBotRunning(true);
     scheduleTweets();
     logger.info('Twitter bot is running...');
   } catch (error) {
     logger.error('Error starting bot:', error);
+    analyticsManager.setBotRunning(false);
     process.exit(1);
   }
 }
 
+// Add a graceful shutdown handler
+function gracefulShutdown(): void {
+  logger.info('Shutting down Twitter bot...');
+  schedule.gracefulShutdown().then(() => {
+    analyticsManager.setBotRunning(false);
+    logger.info('Scheduler shut down gracefully.');
+    process.exit(0);
+  });
+}
+
+process.on('SIGINT', gracefulShutdown);
+process.on('SIGTERM', gracefulShutdown);
+
 // Export functions for testing
-export {
-  generateAndPostTweet,
-  fetchNews,
-  startBot,
-}; 
+export { generateAndPostTweet, generateTweet, startBot }; 
