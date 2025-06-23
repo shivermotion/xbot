@@ -35,7 +35,7 @@ const prompts: string[] = [
   // 'Generate an engaging tweet about social media marketing.',
   // 'Share an interesting insight about digital transformation.',
   // 'Write a tweet about the future of technology.',
-  "Write a tweet (250-280 characters) as Ryo Hazuki, a sardonic, sarcastic Shenmue parody. Rant about easy modern games, praising Shenmue’s grit or a tough game, with chaotic humor and a nod to retro gaming.  be edgy, controversional, overconfident (because youre overcompensating for being dumb, but you dont want the world to know). Make it feel like Ryo’s unfiltered thoughts, not AI polish. rage bait and engagement bait is ok to use."
+  "Write a tweet (250-280 characters) as Ryo Hazuki, a sardonic, sarcastic Shenmue parody. Rant about easy modern games, praising Shenmue's grit or a tough game, with chaotic humor and a nod to retro gaming.  be edgy, controversional, overconfident (because youre overcompensating for being dumb, but you dont want the world to know). Make it feel like Ryo's unfiltered thoughts, not AI polish. rage bait and engagement bait is ok to use."
 ];
 
 const hasTwitterCreds = (): boolean =>
@@ -171,6 +171,18 @@ async function generateAndPostTweet(dryRun = false): Promise<void> {
     } else {
       logger.error('Unknown error in generateAndPostTweet:', error);
     }
+    // Serialize non-enumerable properties like "message" and "stack"
+    // to capture full error details in logs.
+    try {
+      const serializedError = JSON.stringify(
+        error,
+        Object.getOwnPropertyNames(error),
+        2
+      );
+      logger.error('Raw error object:', serializedError);
+    } catch (serErr) {
+      logger.error('Failed to serialize error object:', serErr);
+    }
     throw error;
   }
 }
@@ -193,7 +205,8 @@ async function verifyTwitterPermissions(): Promise<void> {
     } else {
       logger.error('Authentication error details:', error.message);
     }
-    throw new Error('Authentication failed.');
+    // Rethrow the original error so upstream handlers can access full details.
+    throw error;
   }
 }
 
