@@ -1,4 +1,4 @@
-import { generateTweet, fetchNews, setNewsTopic } from '../bot';
+import { generateTweet, generateAndPostTweet } from '../bot';
 import { analyticsManager } from '../utils/analytics';
 
 // Mock external dependencies
@@ -17,12 +17,16 @@ import { analyticsManager } from '../utils/analytics';
       
       // Mock Hugging Face response
       const mockResponse = {
-        generated_text: 'This is a test tweet about technology! #tech #innovation'
+        choices: [{
+          message: {
+            content: 'This is a test tweet about technology! #tech #innovation'
+          }
+        }]
       };
       
       // Mock the HfInference
       const { HfInference } = require('@huggingface/inference');
-      HfInference.prototype.textGeneration = (global as any).jest.fn().mockResolvedValue(mockResponse);
+      HfInference.prototype.chatCompletion = (global as any).jest.fn().mockResolvedValue(mockResponse);
       
       const result = await generateTweet(prompt);
       
@@ -36,20 +40,33 @@ import { analyticsManager } from '../utils/analytics';
       
       // Mock error response
       const { HfInference } = require('@huggingface/inference');
-      HfInference.prototype.textGeneration = (global as any).jest.fn().mockRejectedValue(new Error('API Error'));
+      HfInference.prototype.chatCompletion = (global as any).jest.fn().mockRejectedValue(new Error('API Error'));
       
       await (global as any).expect(generateTweet(prompt)).rejects.toThrow('Tweet generation failed.');
     });
   });
 
-  (global as any).describe('setNewsTopic', () => {
-    (global as any).it('should update news topic correctly', () => {
-      const newTopic = '#tech OR #technology';
-      setNewsTopic(newTopic);
+  (global as any).describe('generateAndPostTweet', () => {
+    (global as any).it('should handle dry run mode', async () => {
+      // Mock Twitter API
+      const { TwitterApi } = require('twitter-api-v2');
+      TwitterApi.prototype.v2 = {
+        me: (global as any).jest.fn().mockResolvedValue({ data: { username: 'testuser' } }),
+        tweet: (global as any).jest.fn().mockResolvedValue({ data: { id: '123' } })
+      };
       
-      // Note: We can't easily test the internal state without exposing it
-      // This test ensures the function doesn't throw
-      (global as any).expect(() => setNewsTopic(newTopic)).not.toThrow();
+      // Mock Hugging Face
+      const { HfInference } = require('@huggingface/inference');
+      HfInference.prototype.chatCompletion = (global as any).jest.fn().mockResolvedValue({
+        choices: [{
+          message: {
+            content: 'This is a test tweet!'
+          }
+        }]
+      });
+      
+      // This should not throw in dry run mode
+      await (global as any).expect(generateAndPostTweet(true)).resolves.not.toThrow();
     });
   });
 
