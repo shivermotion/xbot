@@ -19,8 +19,29 @@ services:
       - ./logs:/app/logs
       - ./analytics.json:/app/analytics.json
     healthcheck:
-      test: ["CMD", "node", "-e", "console.log('Health check passed')"]
+      test: ['CMD', 'node', '-e', "console.log('Health check passed')"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s 
+      start_period: 40s
+
+  xbot-cron:
+    build: .
+    container_name: xbot-cron
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - TWITTER_API_KEY=${TWITTER_API_KEY}
+      - TWITTER_API_SECRET=${TWITTER_API_SECRET}
+      - TWITTER_ACCESS_TOKEN=${TWITTER_ACCESS_TOKEN}
+      - TWITTER_ACCESS_TOKEN_SECRET=${TWITTER_ACCESS_TOKEN_SECRET}
+      - HUGGINGFACE_TOKEN=${HUGGINGFACE_TOKEN}
+      - TWEET_INTERVAL_HOURS=${TWEET_INTERVAL_HOURS:-4}
+      - MAX_TWEETS_PER_DAY=${MAX_TWEETS_PER_DAY:-5}
+      - TWITTER_USER_ID=${TWITTER_USER_ID}
+    volumes:
+      - ./logs:/app/logs
+      - ./analytics.json:/app/analytics.json
+    command: ['node', 'dist/index.js', '--tweet-once']
+    depends_on:
+      - xbot
