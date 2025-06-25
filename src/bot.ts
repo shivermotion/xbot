@@ -10,6 +10,27 @@ import { sourceManager } from './utils/sources';
 // Load environment variables
 dotenv.config();
 
+// Check for required environment variables
+const requiredEnvVars = {
+  TWITTER_API_KEY: process.env.TWITTER_API_KEY,
+  TWITTER_API_SECRET: process.env.TWITTER_API_SECRET,
+  TWITTER_ACCESS_TOKEN: process.env.TWITTER_ACCESS_TOKEN,
+  TWITTER_ACCESS_TOKEN_SECRET: process.env.TWITTER_ACCESS_TOKEN_SECRET,
+  HUGGINGFACE_TOKEN: process.env.HUGGINGFACE_TOKEN
+};
+
+// Validate environment variables
+const missingVars = Object.entries(requiredEnvVars)
+  .filter(([key, value]) => !value)
+  .map(([key]) => key);
+
+if (missingVars.length > 0) {
+  console.error('❌ Missing required environment variables:');
+  missingVars.forEach(varName => console.error(`   - ${varName}`));
+  console.error('\nPlease set these variables in your Railway environment.');
+  process.exit(1);
+}
+
 // Twitter API client setup
 const client = new TwitterApi({
   appKey: process.env.TWITTER_API_KEY!,
