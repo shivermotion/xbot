@@ -37,35 +37,8 @@ export interface GeneratedContent {
     estimatedEffectiveness: number;
     trendContext?: {
       trendingTopics: string[];
-      viralHashtags: string[];
-      currentEvents: string[];
-      popularKeywords: string[];
       trendSources: {
         trendingTopics: Array<{
-          trend: string;
-          source: 'twitter_api' | 'static_bank' | 'external_api';
-          method?: string;
-          engagement?: number;
-          frequency?: number;
-          category?: string;
-        }>;
-        viralHashtags: Array<{
-          trend: string;
-          source: 'twitter_api' | 'static_bank' | 'external_api';
-          method?: string;
-          engagement?: number;
-          frequency?: number;
-          category?: string;
-        }>;
-        currentEvents: Array<{
-          trend: string;
-          source: 'twitter_api' | 'static_bank' | 'external_api';
-          method?: string;
-          engagement?: number;
-          frequency?: number;
-          category?: string;
-        }>;
-        popularKeywords: Array<{
           trend: string;
           source: 'twitter_api' | 'static_bank' | 'external_api';
           method?: string;
@@ -99,9 +72,6 @@ class ContentOrchestrator {
         const trendData = await trendMonitor.getTrendContext();
         trendContext = {
           trendingTopics: trendData.trendingTopics,
-          viralHashtags: trendData.viralHashtags,
-          currentEvents: trendData.currentEvents,
-          popularKeywords: trendData.popularKeywords,
           trendSources: trendData.trendSources
         };
         
@@ -290,7 +260,7 @@ class ContentOrchestrator {
     let estimatedEffectiveness = (strategy.effectiveness + ruleBalance) / 2;
     
     // Boost effectiveness if using trending topics
-    if (trendContext && (trendContext.trendingTopics.length > 0 || trendContext.viralHashtags.length > 0)) {
+    if (trendContext && trendContext.trendingTopics.length > 0) {
       estimatedEffectiveness = Math.min(estimatedEffectiveness * 1.2, 1.0); // Boost by 20%
     }
     
@@ -355,9 +325,6 @@ class ContentOrchestrator {
       const trendContext = await trendMonitor.getTrendContext();
       return {
         trendingTopics: trendContext.trendingTopics,
-        viralHashtags: trendContext.viralHashtags,
-        currentEvents: trendContext.currentEvents,
-        popularKeywords: trendContext.popularKeywords,
         lastUpdated: trendContext.lastUpdated,
         trendSources: trendContext.trendSources
       };

@@ -217,22 +217,12 @@ function startCli() {
       if (generatedContent.metadata.trendContext.trendingTopics.length > 0) {
         console.log(chalk.yellow('Trending Topics:'), generatedContent.metadata.trendContext.trendingTopics.slice(0, 3).join(', '));
       }
-      if (generatedContent.metadata.trendContext.viralHashtags.length > 0) {
-        console.log(chalk.yellow('Viral Hashtags:'), generatedContent.metadata.trendContext.viralHashtags.slice(0, 3).join(', '));
-      }
       
       // Show trend sources summary
-      const twitterApiCount = generatedContent.metadata.trendContext.trendSources.trendingTopics.filter(t => t.source === 'twitter_api').length +
-                             generatedContent.metadata.trendContext.trendSources.viralHashtags.filter(t => t.source === 'twitter_api').length +
-                             generatedContent.metadata.trendContext.trendSources.currentEvents.filter(t => t.source === 'twitter_api').length +
-                             generatedContent.metadata.trendContext.trendSources.popularKeywords.filter(t => t.source === 'twitter_api').length;
+      const twitterApiCount = generatedContent.metadata.trendContext.trendSources.trendingTopics.filter(t => t.source === 'twitter_api').length;
+      const externalApiCount = generatedContent.metadata.trendContext.trendSources.trendingTopics.filter(t => t.source === 'external_api').length;
       
-      const staticBankCount = generatedContent.metadata.trendContext.trendSources.trendingTopics.filter(t => t.source === 'static_bank').length +
-                             generatedContent.metadata.trendContext.trendSources.viralHashtags.filter(t => t.source === 'static_bank').length +
-                             generatedContent.metadata.trendContext.trendSources.currentEvents.filter(t => t.source === 'static_bank').length +
-                             generatedContent.metadata.trendContext.trendSources.popularKeywords.filter(t => t.source === 'static_bank').length;
-      
-      console.log(chalk.gray(`Trend Sources: ${chalk.green('Twitter API')} (${twitterApiCount}), ${chalk.blue('Static Bank')} (${staticBankCount})`));
+      console.log(chalk.gray(`Trend Sources: ${chalk.green('Twitter API')} (${twitterApiCount}), ${chalk.yellow('External APIs')} (${externalApiCount})`));
     }
     
     console.log(chalk.yellow('\n=== Full Prompt ==='));
@@ -563,22 +553,12 @@ function startCli() {
       if (generatedContent.metadata.trendContext.trendingTopics.length > 0) {
         console.log(chalk.yellow('Trending Topics:'), generatedContent.metadata.trendContext.trendingTopics.slice(0, 3).join(', '));
       }
-      if (generatedContent.metadata.trendContext.viralHashtags.length > 0) {
-        console.log(chalk.yellow('Viral Hashtags:'), generatedContent.metadata.trendContext.viralHashtags.slice(0, 3).join(', '));
-      }
       
       // Show trend sources summary
-      const twitterApiCount = generatedContent.metadata.trendContext.trendSources.trendingTopics.filter(t => t.source === 'twitter_api').length +
-                             generatedContent.metadata.trendContext.trendSources.viralHashtags.filter(t => t.source === 'twitter_api').length +
-                             generatedContent.metadata.trendContext.trendSources.currentEvents.filter(t => t.source === 'twitter_api').length +
-                             generatedContent.metadata.trendContext.trendSources.popularKeywords.filter(t => t.source === 'twitter_api').length;
+      const twitterApiCount = generatedContent.metadata.trendContext.trendSources.trendingTopics.filter(t => t.source === 'twitter_api').length;
+      const externalApiCount = generatedContent.metadata.trendContext.trendSources.trendingTopics.filter(t => t.source === 'external_api').length;
       
-      const staticBankCount = generatedContent.metadata.trendContext.trendSources.trendingTopics.filter(t => t.source === 'static_bank').length +
-                             generatedContent.metadata.trendContext.trendSources.viralHashtags.filter(t => t.source === 'static_bank').length +
-                             generatedContent.metadata.trendContext.trendSources.currentEvents.filter(t => t.source === 'static_bank').length +
-                             generatedContent.metadata.trendContext.trendSources.popularKeywords.filter(t => t.source === 'static_bank').length;
-      
-      console.log(chalk.gray(`Trend Sources: ${chalk.green('Twitter API')} (${twitterApiCount}), ${chalk.blue('Static Bank')} (${staticBankCount})`));
+      console.log(chalk.gray(`Trend Sources: ${chalk.green('Twitter API')} (${twitterApiCount}), ${chalk.yellow('External APIs')} (${externalApiCount})`));
     }
     
     console.log(chalk.yellow('\n=== Generated Prompt ==='));
@@ -613,13 +593,18 @@ function startCli() {
     console.log(chalk.yellow('Current Trends'));
     
     try {
+      // Force fresh trend data by importing trendMonitor directly and clearing cache
+      const { trendMonitor } = require('./utils/trendMonitor');
+      
+      // Clear the cache to force fresh data fetch
+      trendMonitor['trendCache'] = null;
+      
       const trendInfo = await contentOrchestrator.getTrendInfo();
       
       if (trendInfo) {
         console.log(chalk.cyan('\n=== Trending Topics ==='));
         trendInfo.trendSources.trendingTopics.forEach((source, i) => {
           const sourceLabel = source.source === 'twitter_api' ? chalk.green('Twitter API') : 
-                             source.source === 'static_bank' ? chalk.blue('Static Bank') : 
                              chalk.yellow('External API');
           const methodInfo = source.method ? chalk.gray(` (${source.method})`) : '';
           const engagementInfo = source.engagement ? chalk.cyan(` - Engagement: ${source.engagement}`) : '';
@@ -628,51 +613,21 @@ function startCli() {
           console.log(`${i + 1}. ${source.trend} [${sourceLabel}]${methodInfo}${engagementInfo}${categoryInfo}`);
         });
         
-        console.log(chalk.cyan('\n=== Viral Hashtags ==='));
-        trendInfo.trendSources.viralHashtags.forEach((source, i) => {
-          const sourceLabel = source.source === 'twitter_api' ? chalk.green('Twitter API') : 
-                             source.source === 'static_bank' ? chalk.blue('Static Bank') : 
-                             chalk.yellow('External API');
-          const engagementInfo = source.engagement ? chalk.cyan(` - Engagement: ${source.engagement}`) : '';
-          
-          console.log(`${i + 1}. ${source.trend} [${sourceLabel}]${engagementInfo}`);
-        });
-        
-        console.log(chalk.cyan('\n=== Current Events ==='));
-        trendInfo.trendSources.currentEvents.forEach((source, i) => {
-          const sourceLabel = source.source === 'twitter_api' ? chalk.green('Twitter API') : 
-                             source.source === 'static_bank' ? chalk.blue('Static Bank') : 
-                             chalk.yellow('External API');
-          
-          console.log(`${i + 1}. ${source.trend} [${sourceLabel}]`);
-        });
-        
-        console.log(chalk.cyan('\n=== Popular Keywords ==='));
-        trendInfo.trendSources.popularKeywords.forEach((source, i) => {
-          const sourceLabel = source.source === 'twitter_api' ? chalk.green('Twitter API') : 
-                             source.source === 'static_bank' ? chalk.blue('Static Bank') : 
-                             chalk.yellow('External API');
-          const frequencyInfo = source.frequency ? chalk.cyan(` - Frequency: ${source.frequency}`) : '';
-          
-          console.log(`${i + 1}. ${source.trend} [${sourceLabel}]${frequencyInfo}`);
-        });
-        
         console.log(chalk.gray(`\nLast Updated: ${trendInfo.lastUpdated.toLocaleString()}`));
         
         // Summary statistics
-        const twitterApiCount = trendInfo.trendSources.trendingTopics.filter(t => t.source === 'twitter_api').length +
-                               trendInfo.trendSources.viralHashtags.filter(t => t.source === 'twitter_api').length +
-                               trendInfo.trendSources.currentEvents.filter(t => t.source === 'twitter_api').length +
-                               trendInfo.trendSources.popularKeywords.filter(t => t.source === 'twitter_api').length;
-        
-        const staticBankCount = trendInfo.trendSources.trendingTopics.filter(t => t.source === 'static_bank').length +
-                               trendInfo.trendSources.viralHashtags.filter(t => t.source === 'static_bank').length +
-                               trendInfo.trendSources.currentEvents.filter(t => t.source === 'static_bank').length +
-                               trendInfo.trendSources.popularKeywords.filter(t => t.source === 'static_bank').length;
+        const twitterApiCount = trendInfo.trendSources.trendingTopics.filter(t => t.source === 'twitter_api').length;
+        const externalApiCount = trendInfo.trendSources.trendingTopics.filter(t => t.source === 'external_api').length;
         
         console.log(chalk.cyan('\n=== Source Summary ==='));
         console.log(`${chalk.green('Twitter API')}: ${twitterApiCount} trends`);
-        console.log(`${chalk.blue('Static Bank')}: ${staticBankCount} trends`);
+        console.log(`${chalk.yellow('External APIs')}: ${externalApiCount} trends`);
+        
+        // Show priority information
+        console.log(chalk.magenta('\n=== Priority System ==='));
+        console.log(chalk.magenta('• External APIs (Reddit, SerpApi, News) → Highest priority'));
+        console.log(chalk.magenta('• Twitter API → Lower priority'));
+        console.log(chalk.magenta('• No artificial categorization - all trends are trending topics'));
         
       } else {
         console.log(chalk.red('Failed to get trend information'));

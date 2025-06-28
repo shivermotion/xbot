@@ -160,7 +160,7 @@ async function generateAndPostTweet(dryRun = false): Promise<void> {
     // Log trend information if available
     if (generatedContent.metadata.trendContext) {
       const trend = generatedContent.metadata.trendContext;
-      logger.info(`Trend context: ${trend.trendingTopics.length} trending topics, ${trend.viralHashtags.length} viral hashtags`);
+      logger.info(`Trend context: ${trend.trendingTopics.length} trending topics`);
     }
 
     // If this is a dry run, show the prompt
