@@ -6,8 +6,6 @@ import { analyticsManager } from './utils/analytics';
 import inquirer from 'inquirer';
 import figlet from 'figlet';
 import boxen from 'boxen';
-import { sourceManager } from './utils/sources';
-import { TwitterApi } from 'twitter-api-v2';
 
 dotenv.config();
 
@@ -23,13 +21,12 @@ async function mainMenu() {
         name: 'main',
         message: 'What would you like to do?',
         choices: [
-          { name: 'Generate and Post a Test Tweet (Dry Run)', value: 'test' },
           { name: 'View Analytics', value: 'analytics' },
           { name: 'Reset Analytics Data', value: 'reset' },
           { name: 'Check Bot Health', value: 'health' },
-          { name: 'Manage Topics / Users', value: 'sources' },
-          { name: 'Verify Twitter Credentials', value: 'verify' },
           { name: 'Send LIVE Tweet Now', value: 'live' },
+          new inquirer.Separator(),
+          { name: 'Content Management (Advanced)', value: 'content' },
           new inquirer.Separator(),
           { name: 'Exit', value: 'exit' },
         ],
@@ -38,9 +35,6 @@ async function mainMenu() {
     ]);
 
     switch (answer.main) {
-      case 'test':
-        await handleTestTweet();
-        break;
       case 'analytics':
         await handleAnalytics();
         break;
@@ -50,14 +44,11 @@ async function mainMenu() {
       case 'health':
         await handleHealthCheck();
         break;
-      case 'sources':
-        await handleSourceManager();
-        break;
-      case 'verify':
-        await handleVerifyCreds();
-        break;
       case 'live':
         await handleLiveTweet();
+        break;
+      case 'content':
+        await handleContentRedirect();
         break;
       case 'exit':
         console.log(chalk.blue('Exiting...'));
@@ -75,21 +66,19 @@ async function mainMenu() {
   }
 }
 
-async function handleTestTweet() {
-  try {
-    console.log(chalk.blue('Generating a test tweet (dry run)...'));
-    await generateAndPostTweet(true);
-    analyticsManager.recordApiCall('huggingFace');
-    console.log(
-      chalk.green('Test tweet generation completed successfully (dry run).')
-    );
-  } catch (error) {
-    analyticsManager.recordApiCall('huggingFace');
-    console.error(chalk.red('Error generating test tweet:'), error);
-  }
-
-  // Wait for user to press Enter before returning to menu
-  await inquirer.prompt({ type: 'input', name: 'continue', message: 'Press Enter to return to the main menu' });
+async function handleContentRedirect() {
+  console.log(chalk.yellow('\n=== Content Management ==='));
+  console.log(chalk.cyan('Redirecting to Content CLI for advanced features:'));
+  console.log(chalk.cyan('• Content Generation & Testing'));
+  console.log(chalk.cyan('• Persona Management'));
+  console.log(chalk.cyan('• Strategy Management'));
+  console.log(chalk.cyan('• Rules Management'));
+  console.log(chalk.cyan('• Trend Monitoring'));
+  console.log(chalk.cyan('• Twitter API Credentials'));
+  console.log('');
+  console.log(chalk.green('Run: yarn content'));
+  console.log('');
+  await inquirer.prompt({ type: 'input', name: 'continue', message: 'Press Enter to return to main menu' });
 }
 
 async function handleAnalytics() {
@@ -152,151 +141,58 @@ async function handleHealthCheck() {
   await inquirer.prompt({ type: 'input', name: 'continue', message: 'Press Enter to return to the main menu' });
 }
 
-async function handleSourceManager() {
-  while (true) {
-    console.clear();
-    console.log(chalk.yellow('--- Source Manager ---'));
-    const cfg = sourceManager.getConfig();
-    console.log(chalk.cyan('Mode:'), cfg.mode);
-    console.log(chalk.cyan('Topics:'), cfg.topics.length ? cfg.topics.join(', ') : 'None');
-    console.log(chalk.cyan('Users:'), cfg.users.length ? cfg.users.join(', ') : 'None');
-
-    const ans = await inquirer.prompt([
-      {
-        type: 'list',
-        name: 'action',
-        message: 'Choose an action',
-        choices: [
-          { name: 'Add Topic', value: 'addTopic' },
-          { name: 'Remove Topic', value: 'removeTopic' },
-          { name: 'Add User', value: 'addUser' },
-          { name: 'Remove User', value: 'removeUser' },
-          { name: 'Toggle Mode (static/dynamic)', value: 'toggle' },
-          new inquirer.Separator(),
-          { name: 'Back to Main Menu', value: 'back' },
-        ],
-        loop: false,
-      },
-    ]);
-
-    switch ((ans as any).action) {
-      case 'addTopic': {
-        const { topic } = await inquirer.prompt([{ type: 'input', name: 'topic', message: 'Enter topic (without #):' }]) as any;
-        if (topic.trim()) sourceManager.addTopic(topic.trim());
-        break; }
-      case 'removeTopic': {
-        if (cfg.topics.length === 0) break;
-        const { topic } = await inquirer.prompt([{ type: 'list', name: 'topic', message: 'Select topic to remove', choices: cfg.topics }]) as any;
-        sourceManager.removeTopic(topic);
-        break; }
-      case 'addUser': {
-        const { user } = await inquirer.prompt([{ type: 'input', name: 'user', message: 'Enter Twitter username (without @):' }]) as any;
-        if (user.trim()) sourceManager.addUser(user.trim());
-        break; }
-      case 'removeUser': {
-        if (cfg.users.length === 0) break;
-        const { user } = await inquirer.prompt([{ type: 'list', name: 'user', message: 'Select user to remove', choices: cfg.users }]) as any;
-        sourceManager.removeUser(user);
-        break; }
-      case 'toggle': {
-        sourceManager.setMode(cfg.mode === 'static' ? 'dynamic' : 'static');
-        break; }
-      case 'back':
-        return;
-    }
-  }
-}
-
-async function handleVerifyCreds() {
-  console.clear();
-  console.log(chalk.yellow('Verifying Twitter credentials...'));
-  const { TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET } = process.env;
-  if (!TWITTER_API_KEY || !TWITTER_API_SECRET || !TWITTER_ACCESS_TOKEN || !TWITTER_ACCESS_TOKEN_SECRET) {
-    console.log(chalk.red('Missing one or more TWITTER_* variables in .env'));
-  } else {
-    try {
-      const client = new TwitterApi({
-        appKey: TWITTER_API_KEY,
-        appSecret: TWITTER_API_SECRET,
-        accessToken: TWITTER_ACCESS_TOKEN,
-        accessSecret: TWITTER_ACCESS_TOKEN_SECRET,
-      });
-      const user = await client.v2.me();
-      console.log(chalk.green(`Successfully authenticated as @${user.data.username}`));
-    } catch (err: any) {
-      const code = err?.code || err?.data?.status;
-      if (code === 429) {
-        const reset = err?.rateLimit?.reset;
-        const resetDate = reset ? new Date(reset * 1000).toLocaleTimeString() : 'later';
-        console.log(chalk.yellow('⚠ Credentials appear valid but you hit the rate limit (429).'));
-        console.log(chalk.yellow(`   Try again after ${resetDate} UTC.`));
-      } else {
-        console.log(chalk.red('Authentication failed:'), err?.message || err);
-      }
-    }
-  }
-  await inquirer.prompt({ type: 'input', name: 'continue', message: 'Press Enter to return to the main menu' });
-}
-
 async function handleLiveTweet() {
-  console.clear();
-  console.log(chalk.red.bold('⚠ LIVE TWEET MODE ⚠'));
-  console.log(
-    chalk.yellow(
-      'This will immediately generate a tweet using current settings and post it to Twitter.'
-    )
-  );
-  const confirm1 = await inquirer.prompt({
-    type: 'confirm',
-    name: 'proceed',
-    message: 'Are you absolutely sure you want to continue?',
-    default: false,
-  });
-  if (!confirm1.proceed) return;
+  console.log(chalk.yellow.bold('⚠️  WARNING: This will post a LIVE tweet to your account!'));
+  const confirmation = await inquirer.prompt([
+    {
+      type: 'confirm',
+      name: 'confirmLive',
+      message: 'Are you sure you want to post a live tweet?',
+      default: false,
+    },
+  ]);
 
-  const confirm2 = await inquirer.prompt({
-    type: 'input',
-    name: 'typed',
-    message: 'Type SEND to confirm:',
-  });
-  if (confirm2.typed !== 'SEND') {
+  if (confirmation.confirmLive) {
+    try {
+      console.log(chalk.blue('Generating and posting live tweet...'));
+      await generateAndPostTweet(false); // false = live tweet
+      analyticsManager.recordApiCall('huggingFace');
+      console.log(chalk.green('Live tweet posted successfully!'));
+    } catch (error) {
+      analyticsManager.recordApiCall('huggingFace');
+      console.error(chalk.red('Error posting live tweet:'), error);
+    }
+  } else {
     console.log(chalk.blue('Live tweet cancelled.'));
-    await inquirer.prompt({ type: 'input', name: 'continue', message: 'Press Enter to return to the main menu' });
-    return;
   }
 
-  try {
-    console.log(chalk.blue('Generating and posting live tweet...'));
-    await generateAndPostTweet(false);
-    analyticsManager.recordApiCall('twitter');
-    console.log(chalk.green('✅ Tweet posted successfully!'));
-  } catch (err) {
-    console.error(chalk.red('❌ Failed to post tweet:'), err);
-  }
+  // Wait for user to press Enter before returning to menu
   await inquirer.prompt({ type: 'input', name: 'continue', message: 'Press Enter to return to the main menu' });
 }
 
-// Utility to display ASCII header and bot status
 function displayHeader(): void {
   console.clear();
-  const header = figlet.textSync('XBot CLI', { horizontalLayout: 'full' });
-  console.log(chalk.blue(header));
-
-  const stats = analyticsManager.getAnalytics();
-  const statusLine = `Bot Status: ${stats.isBotRunning ? chalk.green('Running') : chalk.red('Stopped')}`;
-  const uptimeLine = `Uptime: ${stats.uptime} sec`;
-
   console.log(
-    boxen(`${statusLine}\n${uptimeLine}`, {
-      padding: 1,
-      borderColor: stats.isBotRunning ? 'green' : 'red',
-      borderStyle: 'round',
-      align: 'center',
-    })
+    chalk.blue(
+      figlet.textSync('XBot', { horizontalLayout: 'full' })
+    )
   );
+  
+  const statusBox = boxen(
+    chalk.green(`Bot Status:
+• Main CLI - Bot Operations
+• Content CLI - Advanced Content Management
+• Free Tier Compatible
+• Railway Deployed`),
+    { padding: 1, margin: 1, borderStyle: 'round' }
+  );
+  console.log(statusBox);
 }
 
-// Start the CLI if this file is run directly
+// Start the CLI
 if (require.main === module) {
-  mainMenu();
+  mainMenu().catch((error) => {
+    console.error('Failed to start CLI:', error);
+    process.exit(1);
+  });
 } 

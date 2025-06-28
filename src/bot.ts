@@ -6,6 +6,7 @@ import { logger } from './utils/logger';
 import { analyticsManager } from './utils/analytics';
 import chalk from 'chalk';
 import { sourceManager } from './utils/sources';
+import { contentOrchestrator, ContentRequest } from './utils/contentOrchestrator';
 
 // Load environment variables
 dotenv.config();
@@ -47,16 +48,6 @@ const modelsToTry = [
   'meta-llama/Llama-3.1-8B-Instruct',
   'mistralai/Mistral-7B-Instruct-v0.3',
   'Qwen/Qwen2-7B-Instruct',
-];
-
-// Sample prompts for tweet generation
-const prompts: string[] = [
-  // 'Write a witty tweet about trending tech news.',
-  // 'Create a fun fact tweet about AI advancements.',
-  // 'Generate an engaging tweet about social media marketing.',
-  // 'Share an interesting insight about digital transformation.',
-  // 'Write a tweet about the future of technology.',
-  "Write a tweet (250-280 characters) as Ryo Hazuki, a sardonic, sarcastic Shenmue parody. Rant about easy modern games, praising Shenmue's grit or a tough game, with chaotic humor and a nod to retro gaming.  be edgy, controversional, overconfident (because youre overcompensating for being dumb, but you dont want the world to know). Make it feel like Ryo's unfiltered thoughts, not AI polish. rage bait and engagement bait is ok to use."
 ];
 
 const hasTwitterCreds = (): boolean =>
@@ -129,19 +120,13 @@ async function generateAndPostTweet(dryRun = false): Promise<void> {
       await verifyTwitterPermissions();
     }
 
-    // Select a random prompt
-    const prompt = prompts[Math.floor(Math.random() * prompts.length)];
-
-    // Build final prompt with source (topics/users) if configured
-    let finalPrompt = prompt;
+    // Get context from sources
     const sourceCfg = sourceManager.getConfig();
     let contextInfo: string | undefined;
+    
     if (sourceCfg.mode === 'static') {
       const randomSource = sourceManager.getRandomSource();
       contextInfo = randomSource;
-      if (randomSource) {
-        finalPrompt = `${prompt} Context: ${randomSource}`;
-      }
     } else {
       let dyn: string | undefined;
       if (hasTwitterCreds()) {
@@ -150,36 +135,57 @@ async function generateAndPostTweet(dryRun = false): Promise<void> {
         logger.warn('Dynamic lookup skipped – missing Twitter credentials');
       }
       contextInfo = dyn;
-      if (dyn) {
-        finalPrompt = `${prompt} Context: ${dyn}`;
-      }
     }
 
     logger.info(
       `🛈 Mode: ${sourceCfg.mode}$${contextInfo ? `, Context: ${contextInfo}` : ', Context: none'}`
     );
 
-    // If this is a dry run, show exactly what prompt would be sent to the LLM
-    if (dryRun) {
-      logger.info(`🛈 Prompt to LLM: ${finalPrompt}`);
+    // Generate content using the orchestrator
+    const contentRequest: ContentRequest = {
+      context: {
+        topic: contextInfo,
+        goal: 'engagement',
+        tone: 'mixed'
+      },
+      useTrendingTopics: true // Enable trend monitoring
+    };
+
+    const generatedContent = await contentOrchestrator.generateContent(contentRequest);
+    
+    logger.info(`Generated content with persona: ${generatedContent.persona.name}`);
+    logger.info(`Using strategy: ${generatedContent.strategy.name}`);
+    logger.info(`Estimated effectiveness: ${(generatedContent.metadata.estimatedEffectiveness * 100).toFixed(0)}%`);
+    
+    // Log trend information if available
+    if (generatedContent.metadata.trendContext) {
+      const trend = generatedContent.metadata.trendContext;
+      logger.info(`Trend context: ${trend.trendingTopics.length} trending topics, ${trend.viralHashtags.length} viral hashtags`);
     }
 
-    // Generate the tweet content (HF skipped in dryRun)
-    const tweet = await generateTweet(finalPrompt, dryRun);
+    // If this is a dry run, show the prompt
+    if (dryRun) {
+      logger.info(`🛈 Generated Prompt: ${generatedContent.fullPrompt}`);
+    }
+
+    // Generate the tweet content
+    const tweet = await generateTweet(generatedContent.fullPrompt, dryRun);
 
     if (dryRun) {
       logger.info('--- DRY RUN MODE ---');
       logger.info('Tweet that would have been posted:');
-      // Use console.log for clean output without logger formatting
       console.log(chalk.greenBright.bold(`\n${tweet}\n`));
       logger.info('--- No tweet was sent. ---');
-      return; // Stop execution here for a dry run
+      return;
     }
 
     await client.v2.tweet(tweet);
     logger.info(`Posted tweet: ${tweet}`);
-    // Analytics for live tweets will be handled by the CLI that calls this.
+    
+    // Record analytics
+    analyticsManager.recordTweet(true, tweet);
   } catch (error) {
+    analyticsManager.recordTweet(false, '');
     if (error instanceof Error) {
       if (error.message.includes('Write permission')) {
         logger.error('Permission Error:', error.message);

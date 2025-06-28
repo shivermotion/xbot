@@ -6,11 +6,9 @@ XBot is a sophisticated Twitter/X bot that automatically generates and posts eng
 
 - **AI-Powered Tweet Generation**: Uses Hugging Face's Inference API with model fallback for robust tweet creation.
 - **Automated Posting**: Uses `node-schedule` for configurable, automated tweet posting.
-- **Interactive CLI**: A powerful, user-friendly command-line interface for managing the bot, including:
-  - Dry-run mode for testing tweet generation safely.
-  - Detailed analytics viewer.
-  - Secure analytics reset with confirmation.
-  - Comprehensive system health check.
+- **Dual CLI System**: Two specialized command-line interfaces:
+  - **Bot CLI**: Core bot operations, analytics, health monitoring, and live tweeting
+  - **Content CLI**: Advanced content management, personas, strategies, rules, and trend monitoring
 - **Persistent Analytics**: Bot statistics (API calls, success/failure rates, uptime) are saved to `analytics.json` and persist across restarts.
 - **Health Monitoring**: A dedicated health check command to verify the status of Twitter and Hugging Face APIs.
 - **Containerized Deployment**: Comes with a `Dockerfile` and `docker-compose.yml` for easy, consistent deployment.
@@ -129,26 +127,44 @@ For a true 24/7 "always-on" setup, deploying with Docker is the best approach.
     docker-compose down
     ```
 
-### Using the Management CLI
+### Using the Management CLIs
 
-The CLI is a powerful tool for managing your bot and performing one-off tasks. The bot **does not** need to be running to use most CLI features.
+XBot provides two specialized CLI interfaces for different management tasks. The bot **does not** need to be running to use most CLI features.
 
-**Start the CLI:**
+#### Bot CLI (Core Operations)
+
+**Start the Bot CLI:**
 
 ```bash
-yarn cli
+yarn bot
 ```
 
-The CLI provides the following options:
+The Bot CLI provides the following options:
 
-1.  Generate & Post Test Tweet
-2.  View Analytics
-3.  Test News API
-4.  View Recent Tweets
-5.  View Error Log
-6.  Change News Topic
-7.  Check Twitter Permissions
-8.  Exit
+1.  **View Analytics** - Bot performance metrics and statistics
+2.  **Reset Analytics Data** - Clear stored analytics data
+3.  **Check Bot Health** - System health monitoring
+4.  **Send LIVE Tweet Now** - Immediate tweet posting
+5.  **Content Management (Advanced)** - Redirect to Content CLI
+6.  **Exit**
+
+#### Content CLI (Advanced Content Management)
+
+**Start the Content CLI:**
+
+```bash
+yarn content
+```
+
+The Content CLI provides advanced content management features:
+
+1.  **Generate & Test Content** - Create and preview tweets
+2.  **Manage Personas** - Create and configure bot personalities
+3.  **Manage Strategies** - Configure content generation strategies
+4.  **Manage Rules** - Set tweet composition rules
+5.  **Monitor Trends** - View current trending topics
+6.  **Check Twitter Credentials** - Verify API access
+7.  **Exit**
 
 ## 📊 Analytics
 
@@ -162,7 +178,7 @@ XBot tracks various metrics including:
 - API call statistics
 - Bot uptime and performance
 
-View these metrics through the CLI's analytics interface or check the `analytics.json` file.
+View these metrics through the Bot CLI's analytics interface or check the `analytics.json` file.
 
 ## 🔍 Logging
 
