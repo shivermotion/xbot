@@ -145,27 +145,56 @@ class ContentOrchestrator {
   private getPersona(personaId?: string): GeneratedPersona {
     if (personaId) {
       // Try to get existing persona first
-      const existingPersonas = personaCreator.getPersonas();
-      const existingPersona = existingPersonas.find(p => p.id === personaId);
+      const existingPersona = personaCreator.getPersonaById(personaId);
       
       if (existingPersona) {
-        const traits = personaCreator.getPersonalityTraits().filter(trait => 
-          existingPersona.baseTraits.includes(trait.id)
-        );
-        
-        return {
-          id: existingPersona.id,
-          name: existingPersona.name,
-          description: existingPersona.description,
-          traits,
-          voicePrompt: personaCreator['buildVoicePrompt'](traits),
-          writingInstructions: personaCreator['buildWritingInstructions'](traits)
-        };
+        return existingPersona;
       }
+      
+      logger.warn(`Persona ${personaId} not found, using random persona`);
     }
     
     // Return random persona if no valid ID provided
     return personaCreator.getRandomPersona();
+  }
+
+  // Get available personas for selection
+  getAvailablePersonas(): GeneratedPersona[] {
+    const personas = personaCreator.getPersonas();
+    return personas.map(persona => {
+      const traits = personaCreator.getPersonalityTraits().filter(trait => 
+        persona.baseTraits.includes(trait.id)
+      );
+      
+      return {
+        id: persona.id,
+        name: persona.name,
+        description: persona.description,
+        traits,
+        voicePrompt: personaCreator['buildVoicePrompt'](traits),
+        writingInstructions: personaCreator['buildWritingInstructions'](traits)
+      };
+    });
+  }
+
+  // Get a specific persona by name (case-insensitive)
+  getPersonaByName(name: string): GeneratedPersona | null {
+    const personas = personaCreator.getPersonas();
+    const persona = personas.find(p => 
+      p.name.toLowerCase().includes(name.toLowerCase()) ||
+      p.id.toLowerCase().includes(name.toLowerCase())
+    );
+    
+    if (persona) {
+      return personaCreator.getPersonaById(persona.id);
+    }
+    
+    return null;
+  }
+
+  // Get a specific persona by ID
+  getPersonaById(personaId: string): GeneratedPersona | null {
+    return personaCreator.getPersonaById(personaId);
   }
 
   // Get a strategy (best for context if not specified)

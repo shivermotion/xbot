@@ -243,64 +243,224 @@ function startCli() {
 
   // Handle persona management
   async function handlePersonaManagement() {
-    console.clear();
-    console.log(chalk.yellow('Persona Management'));
-    
-    const personas = personaCreator.getPersonas();
-    const traits = personaCreator.getPersonalityTraits();
-    
-    console.log(chalk.cyan('\nCurrent Personas:'));
-    personas.forEach((p, i) => {
-      console.log(`${i + 1}. ${p.name} - ${p.description}`);
-    });
-    
-    console.log(chalk.cyan('\nAvailable Personality Traits:'));
-    traits.forEach((t, i) => {
-      console.log(`${i + 1}. ${t.name} (weight: ${t.weight}) - ${t.description}`);
-    });
-    
-    const action = await inquirer.prompt([
-      {
-        type: 'list',
-        name: 'action',
-        message: 'What would you like to do?',
-        choices: [
-          { name: 'Create New Persona from Traits', value: 'create' },
-          { name: 'Add New Personality Trait', value: 'addTrait' },
-          { name: 'Back to Main Menu', value: 'back' }
-        ]
-      }
-    ]);
-    
-    if (action.action === 'back') return;
-    
-    if (action.action === 'create') {
-      const traitIds = await inquirer.prompt([
-        {
-          type: 'checkbox',
-          name: 'traitIds',
-          message: 'Select traits to combine:',
-          choices: traits.map(t => ({ name: t.name, value: t.id }))
-        }
-      ]);
+    while (true) {
+      console.clear();
+      console.log(chalk.yellow('=== Persona Management ==='));
       
-      const name = await inquirer.prompt([
-        {
-          type: 'input',
-          name: 'name',
-          message: 'Enter persona name:'
-        }
-      ]);
+      const personas = contentOrchestrator.getAvailablePersonas();
       
-      try {
-        const newPersona = personaCreator.createPersonaFromTraits(name.name, traitIds.traitIds);
-        console.log(chalk.green(`Created persona: ${newPersona.name}`));
-      } catch (error) {
-        console.log(chalk.red('Error creating persona:'), error);
+      console.log(chalk.cyan('\n📋 Available Personas:'));
+      personas.forEach((persona, i) => {
+        console.log(chalk.bold(`\n${i + 1}. ${persona.name}`));
+        console.log(chalk.gray(`   ID: ${persona.id}`));
+        console.log(chalk.white(`   ${persona.description}`));
+        
+        const basePersona = personaCreator.getPersonas().find(p => p.id === persona.id);
+        if (basePersona) {
+          console.log(chalk.cyan(`   Tone: ${basePersona.tone}`));
+          console.log(chalk.cyan(`   Vocabulary: ${basePersona.vocabulary}`));
+        }
+        
+        console.log(chalk.yellow(`   Traits:`));
+        persona.traits.forEach((trait: any) => {
+          console.log(chalk.gray(`     • ${trait.name} (${(trait.weight * 100).toFixed(0)}%): ${trait.description}`));
+        });
+        
+        console.log(chalk.blue(`   Voice Characteristics:`));
+        if (basePersona) {
+          basePersona.voiceCharacteristics.forEach((char: string) => {
+            console.log(chalk.gray(`     • ${char}`));
+          });
+        }
+        
+        console.log(chalk.green(`   Common Topics:`));
+        if (basePersona) {
+          basePersona.commonTopics.forEach((topic: string) => {
+            console.log(chalk.gray(`     • ${topic}`));
+          });
+        }
+      });
+      
+      console.log(chalk.yellow('\n🎭 Character Archetypes:'));
+      console.log(chalk.cyan('1. Rage Bait Vigilante (@IFindRetards style)'));
+      console.log(chalk.gray('   • Blunt, provocative posts targeting cultural stupidity'));
+      console.log(chalk.gray('   • "Found one" format with visual targets'));
+      console.log(chalk.gray('   • Zero nuance, maximum outrage potential'));
+      
+      console.log(chalk.cyan('\n2. Conspiracy Theorist (@RealAlexJones style)'));
+      console.log(chalk.gray('   • Bombastic truth-teller exposing hidden agendas'));
+      console.log(chalk.gray('   • ALL CAPS delivery with dramatic claims'));
+      console.log(chalk.gray('   • Links everything to grand conspiracy narratives'));
+      
+      console.log(chalk.cyan('\n3. Bitter Tech Insider (@yacineMTB style)'));
+      console.log(chalk.gray('   • Personal rants with insider tech knowledge'));
+      console.log(chalk.gray('   • Vulnerable authenticity mixed with snark'));
+      console.log(chalk.gray('   • Leverages industry credibility for engagement'));
+      
+      const ans = await inquirer.prompt([
+        {
+          type: 'list',
+          name: 'action',
+          message: 'Choose an action',
+          choices: [
+            { name: 'Test Specific Persona', value: 'test' },
+            { name: 'View Persona Details', value: 'details' },
+            { name: 'Generate Content with Persona', value: 'generate' },
+            new inquirer.Separator(),
+            { name: 'Back to Main Menu', value: 'back' },
+          ],
+          loop: false,
+        },
+      ]);
+
+      switch (ans.action) {
+        case 'test': {
+          const { personaId } = await inquirer.prompt([
+            {
+              type: 'list',
+              name: 'personaId',
+              message: 'Select persona to test:',
+              choices: personas.map(p => ({ name: p.name, value: p.id }))
+            }
+          ]);
+          
+          const persona = contentOrchestrator.getPersonaById(personaId);
+          if (persona) {
+            console.log(chalk.yellow('\n=== Persona Test ==='));
+            console.log(chalk.bold(`Testing: ${persona.name}`));
+            console.log(chalk.cyan('\nVoice Prompt:'));
+            console.log(chalk.white(persona.voicePrompt));
+            console.log(chalk.cyan('\nWriting Instructions:'));
+            console.log(chalk.white(persona.writingInstructions));
+            
+            const { topic } = await inquirer.prompt([
+              {
+                type: 'input',
+                name: 'topic',
+                message: 'Enter a topic to test with:',
+                default: 'current events'
+              }
+            ]);
+            
+            const content = await contentOrchestrator.generateContent({
+              personaId: persona.id,
+              context: { topic, goal: 'engagement' },
+              useTrendingTopics: false
+            });
+            
+            console.log(chalk.green('\n=== Generated Content ==='));
+            console.log(chalk.white(content.fullPrompt));
+            
+            console.log(chalk.cyan('\n=== Metadata ==='));
+            console.log(chalk.gray(`Persona: ${content.persona.name}`));
+            console.log(chalk.gray(`Strategy: ${content.strategy.name}`));
+            console.log(chalk.gray(`Rules Applied: ${content.rules.length}`));
+            console.log(chalk.gray(`Estimated Effectiveness: ${(content.metadata.estimatedEffectiveness * 100).toFixed(0)}%`));
+          }
+          break;
+        }
+        
+        case 'details': {
+          const { personaId } = await inquirer.prompt([
+            {
+              type: 'list',
+              name: 'personaId',
+              message: 'Select persona for detailed view:',
+              choices: personas.map(p => ({ name: p.name, value: p.id }))
+            }
+          ]);
+          
+          const persona = contentOrchestrator.getPersonaById(personaId);
+          if (persona) {
+            console.log(chalk.yellow('\n=== Detailed Persona Analysis ==='));
+            console.log(chalk.bold(`${persona.name}`));
+            console.log(chalk.white(persona.description));
+            
+            console.log(chalk.cyan('\n🎭 Personality Traits:'));
+            persona.traits.forEach((trait: any) => {
+              console.log(chalk.bold(`\n${trait.name} (${(trait.weight * 100).toFixed(0)}% weight)`));
+              console.log(chalk.white(trait.description));
+              console.log(chalk.gray('Examples:'));
+              trait.examples.forEach((example: string) => {
+                console.log(chalk.gray(`  • "${example}"`));
+              });
+            });
+            
+            const basePersona = personaCreator.getPersonas().find(p => p.id === persona.id);
+            if (basePersona) {
+              console.log(chalk.cyan('\n📝 Writing Style:'));
+              console.log(chalk.white(basePersona.writingStyle));
+              
+              console.log(chalk.cyan('\n🎯 Common Topics:'));
+              basePersona.commonTopics.forEach(topic => {
+                console.log(chalk.gray(`  • ${topic}`));
+              });
+            }
+          }
+          break;
+        }
+        
+        case 'generate': {
+          const { personaId } = await inquirer.prompt([
+            {
+              type: 'list',
+              name: 'personaId',
+              message: 'Select persona for content generation:',
+              choices: personas.map(p => ({ name: p.name, value: p.id }))
+            }
+          ]);
+          
+          const { topic, useTrends } = await inquirer.prompt([
+            {
+              type: 'input',
+              name: 'topic',
+              message: 'Enter topic (or leave blank for random):',
+            },
+            {
+              type: 'confirm',
+              name: 'useTrends',
+              message: 'Use trending topics?',
+              default: true
+            }
+          ]);
+          
+          const content = await contentOrchestrator.generateContent({
+            personaId,
+            context: { topic: topic || undefined, goal: 'engagement' },
+            useTrendingTopics: useTrends
+          });
+          
+          console.log(chalk.green('\n=== Generated Content ==='));
+          console.log(chalk.white(content.fullPrompt));
+          
+          const { generateTweet } = await inquirer.prompt([
+            {
+              type: 'confirm',
+              name: 'generateTweet',
+              message: 'Generate actual tweet with this content?',
+              default: false
+            }
+          ]);
+          
+          if (generateTweet) {
+            try {
+              console.log(chalk.yellow('\nGenerating tweet...'));
+              const tweet = await generateTweet(content.fullPrompt, true); // dry run
+              console.log(chalk.green('\n=== Generated Tweet ==='));
+              console.log(chalk.white(tweet));
+            } catch (error) {
+              console.error(chalk.red('Error generating tweet:'), error);
+            }
+          }
+          break;
+        }
+        
+        case 'back':
+          return;
       }
+      
+      await inquirer.prompt({ type: 'input', name: 'continue', message: 'Press Enter to continue' });
     }
-    
-    await inquirer.prompt({ type: 'input', name: 'continue', message: 'Press Enter to continue' });
   }
 
   // Handle strategy management
