@@ -5,8 +5,8 @@ import * as dotenv from 'dotenv';
 import { logger } from './utils/logger';
 import { analyticsManager } from './utils/analytics';
 import chalk from 'chalk';
-import { sourceManager } from './utils/sources';
 import { contentOrchestrator, ContentRequest } from './utils/contentOrchestrator';
+import { trendMonitor } from './utils/trendMonitor';
 
 // Load environment variables
 dotenv.config();
@@ -120,25 +120,21 @@ async function generateAndPostTweet(dryRun = false): Promise<void> {
       await verifyTwitterPermissions();
     }
 
-    // Get context from sources
-    const sourceCfg = sourceManager.getConfig();
+    // Get trending topic from trend monitor
     let contextInfo: string | undefined;
-    
-    if (sourceCfg.mode === 'static') {
-      const randomSource = sourceManager.getRandomSource();
-      contextInfo = randomSource;
-    } else {
-      let dyn: string | undefined;
-      if (hasTwitterCreds()) {
-        dyn = await sourceManager.getDynamicSource();
+    try {
+      contextInfo = await trendMonitor.getRandomTrendingTopic();
+      if (contextInfo) {
+        logger.info(`Using trending topic: ${contextInfo}`);
       } else {
-        logger.warn('Dynamic lookup skipped – missing Twitter credentials');
+        logger.warn('No trending topics available from APIs');
       }
-      contextInfo = dyn;
+    } catch (error) {
+      logger.warn('Failed to get trending topic:', error);
     }
 
     logger.info(
-      `🛈 Mode: ${sourceCfg.mode}$${contextInfo ? `, Context: ${contextInfo}` : ', Context: none'}`
+      `🛈 Context: ${contextInfo ? `Trending topic: ${contextInfo}` : 'No trending topic available'}`
     );
 
     // Generate content using the orchestrator
