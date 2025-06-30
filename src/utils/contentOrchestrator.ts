@@ -98,10 +98,10 @@ class ContentOrchestrator {
     
     // 5. Build the complete prompt
     const fullPrompt = this.buildCompletePrompt(persona, strategy, rules, { ...request, context: enhancedContext });
-    
+
     // 6. Calculate metadata
     const metadata = this.calculateMetadata(persona, strategy, rules, trendContext);
-    
+
     return {
       persona,
       strategy,
@@ -109,6 +109,30 @@ class ContentOrchestrator {
       fullPrompt,
       metadata
     };
+  }
+
+  // Validate and clean the generated tweet
+  private validateAndCleanTweet(tweet: string): string {
+    let cleaned = tweet.trim();
+    
+    // Remove any numbering, bullet points, or list indicators
+    cleaned = cleaned.replace(/^\d+\.\s*/, ''); // Remove "1. " at start
+    cleaned = cleaned.replace(/^[-*•]\s*/, ''); // Remove "- " or "* " at start
+    
+    // Take only the first line if multiple lines were generated
+    cleaned = cleaned.split('\n')[0].trim();
+    
+    // Ensure it's under 280 characters
+    if (cleaned.length > 280) {
+      cleaned = cleaned.slice(0, 277) + '...';
+    }
+    
+    // Final validation
+    if (cleaned.length === 0) {
+      throw new Error('Generated tweet is empty after cleanup');
+    }
+    
+    return cleaned;
   }
 
   // Get a persona (random if not specified)
@@ -211,29 +235,38 @@ class ContentOrchestrator {
   ): string {
     const parts: string[] = [];
 
-    // 1. Persona voice
+    // 1. Clear instruction to generate a single tweet
+    parts.push('Generate ONE single tweet. Do not create examples, lists, or multiple tweets.');
+    
+    // 2. Character limit enforcement
+    parts.push('CRITICAL: Your response must be exactly ONE tweet under 280 characters. No exceptions.');
+    
+    // 3. Hashtag and emoji guidance
+    parts.push('Use hashtags and emojis sparingly and naturally. Not every tweet needs them. When you do use them, keep it to 1-2 hashtags max.');
+    
+    // 4. Persona voice
     parts.push(persona.voicePrompt);
     
-    // 2. Strategy
+    // 5. Strategy
     const strategyPrompt = strategyBank.applyStrategy(strategy.id, request.context);
     parts.push(`Strategy: ${strategyPrompt}`);
     
-    // 3. Rules
+    // 6. Rules
     const ruleIds = rules.map(rule => rule.id);
     const rulesPrompt = rulesBank.applyRules(ruleIds);
     if (rulesPrompt) {
       parts.push(rulesPrompt);
     }
     
-    // 4. Writing instructions
+    // 7. Writing instructions
     parts.push(`Writing Style: ${persona.writingInstructions}`);
     
-    // 5. Custom instructions
+    // 8. Custom instructions
     if (request.customInstructions) {
       parts.push(`Additional Instructions: ${request.customInstructions}`);
     }
     
-    // 6. Context information
+    // 9. Context information
     if (request.context?.topic) {
       parts.push(`Topic: ${request.context.topic}`);
     }
@@ -241,6 +274,9 @@ class ContentOrchestrator {
     if (request.context?.audience) {
       parts.push(`Target Audience: ${request.context.audience}`);
     }
+
+    // 10. Final reminder
+    parts.push('Remember: Generate exactly ONE tweet under 280 characters. No examples, no lists, no multiple tweets.');
 
     return parts.join('\n\n');
   }

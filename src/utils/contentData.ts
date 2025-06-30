@@ -146,7 +146,7 @@ function addStrategies() {
       useCases: ['political debates', 'cultural issues', 'social controversies'],
       examples: [
         'This group is ruining everything! Agree?',
-        'Why is [group] always the problem? #HotTopic',
+        'Why is [group] always the problem?',
         'The audacity of [group] is unreal'
       ]
     },
@@ -154,13 +154,13 @@ function addStrategies() {
       id: 'breaking-news-rehash',
       name: 'Breaking News Rehash',
       description: 'Repackage old stories as fresh, urgent news to exploit emotional reactions',
-      promptTemplate: 'Take an old story about {topic} and present it as BREAKING news. Use urgent language and dramatic emojis to create immediacy.',
+      promptTemplate: 'Take an old story about {topic} and present it as BREAKING news. Use urgent language to create immediacy.',
       category: 'engagement',
       effectiveness: 0.8,
       useCases: ['political scandals', 'viral events', 'controversial stories'],
       examples: [
-        'BREAKING: [Politician] caught in scandal! 🔥',
-        '🚨 This just happened and I\'m shook!',
+        'BREAKING: [Politician] caught in scandal!',
+        'This just happened and I\'m shook!',
         'BREAKING: Major controversy erupts!'
       ]
     },
@@ -173,7 +173,7 @@ function addStrategies() {
       effectiveness: 0.85,
       useCases: ['pop culture', 'current events', 'trending topics'],
       examples: [
-        'Is Superman in the MCU? 🤔',
+        'Is Superman in the MCU?',
         'Beggle is the best breakfast food',
         'What\'s the worst date spot?'
       ]
@@ -187,7 +187,7 @@ function addStrategies() {
       effectiveness: 0.9,
       useCases: ['viral content', 'trending topics', 'controversial opinions'],
       examples: [
-        'This is why [group] is the worst 😤',
+        'This is why [group] is the worst',
         'Hot take: [controversial opinion]',
         'This will trigger so many people'
       ]
@@ -202,7 +202,7 @@ function addStrategies() {
       useCases: ['political targeting', 'fandom controversies', 'generational debates'],
       examples: [
         'Fellas, would you date someone who loves [controversial thing]?',
-        'Typical [demographic] behavior',
+        'Typical [demographic] behavior right here',
         'This is peak [generation] energy'
       ]
     },
@@ -271,11 +271,11 @@ function addRules() {
       id: 'trend-alignment',
       name: 'Trend Alignment',
       description: 'Align with current trending topics',
-      rule: 'Reference current trending topics and hashtags when relevant',
+      rule: 'Reference current trending topics when relevant. Use hashtags sparingly and only when they add value.',
       category: 'content',
       priority: 'medium',
       isRequired: false,
-      examples: ['Use trending hashtags', 'Reference viral moments']
+      examples: ['Reference viral moments', 'Use hashtags only when natural']
     },
     {
       id: 'demographic-targeting',

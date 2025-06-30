@@ -76,7 +76,7 @@ async function generateTweet(
         max_tokens: 80, // Limit the response length for a tweet
       });
 
-      const generated = response.choices[0].message.content;
+      let generated = response.choices[0].message.content;
 
       if (!generated || !generated.trim()) {
         logger.warn(
@@ -85,8 +85,30 @@ async function generateTweet(
         continue;
       }
 
-      logger.info(`Successfully generated tweet with model: ${modelName}`);
-      return generated.trim().slice(0, 280);
+      // Clean up the generated tweet
+      generated = generated.trim();
+      
+      // Remove any numbering, bullet points, or list indicators
+      generated = generated.replace(/^\d+\.\s*/, ''); // Remove "1. " at start
+      generated = generated.replace(/^[-*•]\s*/, ''); // Remove "- " or "* " at start
+      generated = generated.replace(/^BREAKING:\s*/i, ''); // Remove "BREAKING:" prefix if it's redundant
+      
+      // Take only the first line if multiple lines were generated
+      generated = generated.split('\n')[0].trim();
+      
+      // Ensure it's under 280 characters
+      if (generated.length > 280) {
+        generated = generated.slice(0, 277) + '...';
+      }
+      
+      // Final validation
+      if (generated.length === 0) {
+        logger.warn(`Model ${modelName} generated empty tweet after cleanup. Trying next model...`);
+        continue;
+      }
+
+      logger.info(`Successfully generated tweet with model: ${modelName} (${generated.length} chars)`);
+      return generated;
     } catch (error: any) {
       if (
         error.message.includes('is not supported for task text-generation') ||
