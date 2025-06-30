@@ -467,12 +467,7 @@ class PersonaCreator {
       `${trait.name}: ${trait.description}`
     ).join('; ');
 
-    const examples = traits
-      .filter(trait => trait.examples.length > 0)
-      .map(trait => trait.examples[Math.floor(Math.random() * trait.examples.length)])
-      .join(' ');
-
-    return `Voice: ${traitDescriptions}. Examples: ${examples}`;
+    return `Voice: ${traitDescriptions}`;
   }
 
   private buildWritingInstructions(traits: PersonalityTrait[], additionalInstructions?: string): string {
